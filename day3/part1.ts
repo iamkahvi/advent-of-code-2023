@@ -1,17 +1,14 @@
 export {};
 
-const text = await Deno.readTextFile("./test1.txt");
+const text = await Deno.readTextFile("./input1.txt");
 
 const lines = text.split("\n").filter((line) => Boolean(line));
-
-const SYMBOLS = ["*", "#", "+", "$"];
 
 let total = 0;
 
 const isAdjacentMap = lines.map((line, i, lines) => {
-  console.log(line);
   return line.split("").map((token, j, tokens) => {
-    if (SYMBOLS.includes(token)) return token;
+    if (isSymbol(token)) return token;
 
     const above = lines[Math.max(i - 1, 0)][j];
     const left = lines[i][Math.max(j - 1, 0)];
@@ -25,18 +22,16 @@ const isAdjacentMap = lines.map((line, i, lines) => {
       Math.min(j + 1, tokens.length - 1)
     ];
 
-    const match = SYMBOLS.find((symbol) => {
-      return above === symbol ||
-        left === symbol ||
-        right === symbol ||
-        below === symbol ||
-        tr === symbol ||
-        tl === symbol ||
-        bl === symbol ||
-        br === symbol;
-    });
+    const isMatch = isSymbol(above) ||
+      isSymbol(left) ||
+      isSymbol(right) ||
+      isSymbol(below) ||
+      isSymbol(tr) ||
+      isSymbol(tl) ||
+      isSymbol(bl) ||
+      isSymbol(br);
 
-    return match ? true : false;
+    return isMatch ? true : false;
   });
 });
 
@@ -90,6 +85,10 @@ function sumArr(arr: number[]): number {
     const multiplier = Math.pow(10, arr.length - i - 1);
     return total + num * multiplier;
   }, 0);
+}
+
+function isSymbol(token: string): boolean {
+  return Boolean(token.match(/[^.\d]/g));
 }
 
 console.log(toString(isAdjacentMap));
