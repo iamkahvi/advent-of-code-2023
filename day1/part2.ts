@@ -10,61 +10,68 @@ const digits = {
   "seven": 7,
   "eight": 8,
   "nine": 9,
+  "1": 1,
+  "2": 2,
+  "3": 3,
+  "4": 4,
+  "5": 5,
+  "6": 6,
+  "7": 7,
+  "8": 8,
+  "9": 9,
 };
 
 const digitStrings = Object.keys(digits);
 
-let regex = /(one|two|three|four|five|six|seven|eight|nine)/;
-
-// const replacedText = Object.keys(digits).reduce((acc, d) => {
-//   return acc.replaceAll(d, digits[d])
-// }, text)
-
-// console.log(replacedText);
-
 const lines = text.split("\n").filter((line) => Boolean(line));
-
-// eig      []
-// eigh     []
-// eight    []
-// 8        [8]
-// 8w       [8]
-// 8wo      [8]
-// ...      [8]
-// 8wothree [8]
-// 8wo3     [8,3]
 
 const calibrationValues = lines.map((line) => {
   let numsRes: number[] = [];
 
   console.log(`\n--${line}--\n`);
 
-  let j = 0;
-  for (let i = 0; i < line.length; i++) {
-    const lineSegment = line.substring(j, i + 1);
-    console.log(lineSegment);
+  let first = null;
+  let last = null;
+  let i = 0;
 
-    if (/\d/.test(lineSegment)) {
-      const digit = lineSegment.match(/\d/g);
-      numsRes.push(parseInt(digit));
-      j = i + 1;
-    } else if (regex.test(lineSegment)) {
-      digitStrings.forEach((digitString) => {
-        if (lineSegment.includes(digitString)) {
-          numsRes.push(digits[digitString]);
-          j = i + 1;
-        }
-      });
+  while (!first || !last) {
+    const startLineSegment = line.substring(i, i + 5);
+    const endLineSegment = line.substring(line.length - 5 - i, line.length - i);
+
+    const startMatchedDigit = digitStrings.find((digit) => {
+      return startLineSegment.startsWith(digit);
+    });
+    const endMatchedDigit = digitStrings.find((digit) => {
+      return endLineSegment.endsWith(digit);
+    });
+
+    // console.log(`s: ${startLineSegment}`);
+    if (!first && startMatchedDigit) {
+      first = digits[startMatchedDigit];
+      console.log(`match: ${startMatchedDigit}`);
     }
-    console.log(numsRes);
+
+    // console.log(`e: ${endLineSegment}`);
+    if (!last && endMatchedDigit) {
+      last = digits[endMatchedDigit];
+      console.log(`match: ${endMatchedDigit}`);
+    }
+
+    if (i + 1 >= line.length) break;
+
+    i++;
   }
 
-  if (numsRes.length === 0) return 0;
+  if (first === null && last === null) return 0;
 
-  if (numsRes.length === 1) return (numsRes[0] * 10 + numsRes[0]);
+  if (first === null && last !== null) return last * 10 + last;
 
-  return (numsRes[0] * 10 + numsRes[numsRes.length - 1]);
+  if (first !== null && last === null) return first * 10 + first;
+
+  return (first! * 10 + last!);
 });
+
+//  29, 83, 13, 24, 42, 14, and 76.
 
 console.log(calibrationValues);
 
