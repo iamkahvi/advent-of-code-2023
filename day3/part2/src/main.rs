@@ -1,5 +1,5 @@
 use regex::Regex;
-use std::cmp::{max, min};
+use std::cmp::min;
 use std::fmt;
 
 fn main() {
@@ -51,7 +51,7 @@ fn main() {
                                 j: j,
                             }
                         }
-                        Ok(CellType::Symbol(s)) => Cell {
+                        Ok(CellType::Symbol(_)) => Cell {
                             kind: kind.unwrap(),
                             i: i,
                             j: j,
@@ -73,7 +73,7 @@ fn main() {
             match cell.kind {
                 CellType::Symbol(c) => {
                     if c == '*' {
-                        println!("found a gear at {}, {}", cell.i, cell.j);
+                        println!("\nfound a gear at ({},{})", cell.i, cell.j);
 
                         let row_above = &grid[{
                             match i.checked_sub(1) {
@@ -104,6 +104,19 @@ fn main() {
                             "{}{}{}\n{} {}\n{}{}{}",
                             tl, above, tr, left, right, bl, below, br
                         );
+
+                        let nums = vec![tl, above, tr, left, right, bl, below, br]
+                            .iter()
+                            .filter_map(|cell| match &cell.kind {
+                                CellType::Digit(d) => match d.number {
+                                    Some(x) => Some(x),
+                                    None => panic!("no number"),
+                                },
+                                _ => None,
+                            })
+                            .collect::<Vec<i32>>();
+
+                        println!("{:?}", nums);
                     }
                 }
                 _ => (),
@@ -124,6 +137,7 @@ type CellRow = Vec<Cell>;
 struct DigitCell {
     value: usize,
     number: Option<i32>,
+    // id: usize,
 }
 
 #[derive(Debug)]
@@ -166,7 +180,7 @@ impl fmt::Display for Cell {
         let value = {
             match &self.kind {
                 CellType::Digit(d) => d.value.to_string(),
-                CellType::Blank => "_".to_string(),
+                CellType::Blank => ".".to_string(),
                 CellType::Symbol(value) => value.to_string(),
             }
         };
