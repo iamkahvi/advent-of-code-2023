@@ -3,7 +3,7 @@ use std::cmp::min;
 use std::fmt;
 
 fn main() {
-    let lines = include_str!("../../test1.txt")
+    let lines = include_str!("../../input1.txt")
         .lines()
         .collect::<Vec<&str>>();
 
@@ -11,7 +11,7 @@ fn main() {
         .iter()
         .enumerate()
         .map(|(i, line)| {
-            println!("{}", line);
+            // println!("{}", line);
 
             return line
                 .chars()
@@ -32,6 +32,13 @@ fn main() {
                             let end = min(j + 3, line.len() - 1);
                             let line_segment = &line[start..end];
 
+                            let regex_match = re
+                                .find_iter(line_segment)
+                                .max_by_key(|mat| mat.as_str().len())
+                                .unwrap();
+
+                            // println!("{}, {:?}", j, regex_match);
+
                             let number = re
                                 .find_iter(line_segment)
                                 .max_by_key(|mat| mat.as_str().len())
@@ -43,6 +50,7 @@ fn main() {
                             let d = DigitCell {
                                 value: d.value,
                                 number,
+                                id: 0,
                             };
 
                             Cell {
@@ -67,6 +75,8 @@ fn main() {
                 .collect::<Vec<Cell>>();
         })
         .collect::<Vec<CellRow>>();
+
+    let mut total: Vec<i32> = vec![];
 
     for (i, row) in grid.iter().enumerate() {
         for (j, cell) in row.iter().enumerate() {
@@ -100,28 +110,81 @@ fn main() {
                         let bl = &row_below[left_index];
                         let br = &row_below[right_index];
 
+                        let top_line_numbers =
+                            get_numbers_from_line(&tl.kind, &above.kind, &tr.kind);
+
+                        let bottom_line_numbers =
+                            get_numbers_from_line(&bl.kind, &below.kind, &br.kind);
+
+                        let middle_line_numbers = get_numbers_from_middle(&left.kind, &right.kind);
+
+                        let nums = top_line_numbers
+                            .iter()
+                            .chain(bottom_line_numbers.iter())
+                            .chain(middle_line_numbers.iter())
+                            .collect::<Vec<&i32>>();
+
+                        let len_nums = nums.len();
+                        let nums_clone = nums.clone();
+
+                        if len_nums == 2 as usize {
+                            let product = nums_clone.iter().fold(1, |acc, num| acc * num.clone());
+                            total.push(product.clone());
+                        }
+
                         println!(
                             "{}{}{}\n{} {}\n{}{}{}",
                             tl, above, tr, left, right, bl, below, br
                         );
-
-                        let nums = vec![tl, above, tr, left, right, bl, below, br]
-                            .iter()
-                            .filter_map(|cell| match &cell.kind {
-                                CellType::Digit(d) => match d.number {
-                                    Some(x) => Some(x),
-                                    None => panic!("no number"),
-                                },
-                                _ => None,
-                            })
-                            .collect::<Vec<i32>>();
-
-                        println!("{:?}", nums);
+                        dbg!(nums);
                     }
                 }
                 _ => (),
             }
         }
+    }
+
+    println!("{:?}", total);
+    println!("{:?}", total.iter().sum::<i32>());
+}
+
+fn get_numbers_from_middle(left: &CellType, right: &CellType) -> Vec<i32> {
+    match (left, right) {
+        (CellType::Digit(d1), CellType::Digit(d2)) => {
+            vec![d1.number.unwrap(), d2.number.unwrap()]
+        }
+        (CellType::Digit(d), _) => {
+            vec![d.number.unwrap()]
+        }
+        (_, CellType::Digit(d)) => {
+            vec![d.number.unwrap()]
+        }
+        _ => vec![],
+    }
+}
+
+fn get_numbers_from_line(left: &CellType, middle: &CellType, right: &CellType) -> Vec<i32> {
+    match (left, middle, right) {
+        (CellType::Digit(d1), CellType::Digit(_), CellType::Digit(_)) => {
+            vec![d1.number.unwrap()]
+        }
+        (CellType::Digit(d1), CellType::Digit(_), _) => {
+            vec![d1.number.unwrap()]
+        }
+        (_, CellType::Digit(d1), CellType::Digit(_)) => {
+            vec![d1.number.unwrap()]
+        }
+        (CellType::Digit(d1), CellType::Blank, CellType::Digit(d2))
+        | (CellType::Digit(d1), CellType::Symbol(_), CellType::Digit(d2)) => {
+            vec![d1.number.unwrap(), d2.number.unwrap()]
+        }
+        (_, _, CellType::Digit(d)) => {
+            vec![d.number.unwrap()]
+        }
+        (CellType::Digit(d), _, _) => {
+            vec![d.number.unwrap()]
+        }
+        _ => vec![],
     }
 }
 
@@ -137,7 +200,7 @@ type CellRow = Vec<Cell>;
 struct DigitCell {
     value: usize,
     number: Option<i32>,
-    // id: usize,
+    id: usize,
 }
 
 #[derive(Debug)]
@@ -158,6 +221,7 @@ impl CellType {
             let d = DigitCell {
                 value: s.parse::<usize>().unwrap(),
                 number: None,
+                id: 0,
             };
             Ok(CellType::Digit(d))
         } else if blank_regex.is_match(&s) {
