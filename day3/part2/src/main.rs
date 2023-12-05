@@ -3,7 +3,7 @@ use std::cmp::min;
 use std::fmt;
 
 fn main() {
-    let lines = include_str!("../../input1.txt")
+    let lines = include_str!("../../test2.txt")
         .lines()
         .collect::<Vec<&str>>();
 
@@ -11,8 +11,6 @@ fn main() {
         .iter()
         .enumerate()
         .map(|(i, line)| {
-            // println!("{}", line);
-
             return line
                 .chars()
                 .enumerate()
@@ -29,15 +27,8 @@ fn main() {
                                     None => 0,
                                 }
                             };
-                            let end = min(j + 3, line.len() - 1);
-                            let line_segment = &line[start..end];
-
-                            let regex_match = re
-                                .find_iter(line_segment)
-                                .max_by_key(|mat| mat.as_str().len())
-                                .unwrap();
-
-                            // println!("{}, {:?}", j, regex_match);
+                            let end = min(j + 2, line.len() - 1);
+                            let line_segment = &line[start..(end + 1)];
 
                             let number = re
                                 .find_iter(line_segment)
@@ -50,7 +41,6 @@ fn main() {
                             let d = DigitCell {
                                 value: d.value,
                                 number,
-                                id: 0,
                             };
 
                             Cell {
@@ -85,38 +75,77 @@ fn main() {
                     if c == '*' {
                         println!("\nfound a gear at ({},{})", cell.i, cell.j);
 
-                        let row_above = &grid[{
+                        let row_above = {
                             match i.checked_sub(1) {
-                                Some(y) => y,
-                                None => 0,
-                            }
-                        }];
-                        let row_below = &grid[min(i + 1, grid.len() - 1)];
-
-                        let left_index = {
-                            match j.checked_sub(1) {
-                                Some(y) => y,
-                                None => 0,
+                                Some(y) => Some(&grid[y]),
+                                None => None,
                             }
                         };
-                        let right_index = min(j + 1, row.len() - 1);
+                        let row_below = {
+                            if i + 1 <= grid.len() - 1 {
+                                Some(&grid[i + 1])
+                            } else {
+                                None
+                            }
+                        };
 
-                        let above = &row_above[j];
-                        let below = &row_below[j];
-                        let left = &row[left_index];
-                        let right = &row[right_index];
-                        let tl = &row_above[left_index];
-                        let tr = &row_above[right_index];
-                        let bl = &row_below[left_index];
-                        let br = &row_below[right_index];
+                        let left_index = j.checked_sub(1);
+                        let right_index = {
+                            if j + 1 <= row.len() - 1 {
+                                Some(j + 1)
+                            } else {
+                                None
+                            }
+                        };
 
-                        let top_line_numbers =
-                            get_numbers_from_line(&tl.kind, &above.kind, &tr.kind);
+                        let above = if let Some(ra) = row_above {
+                            Some(&ra[j].kind)
+                        } else {
+                            None
+                        };
+                        let below = if let Some(rb) = row_below {
+                            Some(&rb[j].kind)
+                        } else {
+                            None
+                        };
+                        let left = if let Some(li) = left_index {
+                            Some(&row[li].kind)
+                        } else {
+                            None
+                        };
+                        let right = if let Some(ri) = right_index {
+                            Some(&row[ri].kind)
+                        } else {
+                            None
+                        };
+                        let tl = {
+                            match (row_above, left_index) {
+                                (Some(ra), Some(li)) => Some(&ra[li].kind),
+                                _ => None,
+                            }
+                        };
+                        let tr = {
+                            match (row_above, right_index) {
+                                (Some(ra), Some(ri)) => Some(&ra[ri].kind),
+                                _ => None,
+                            }
+                        };
+                        let bl = {
+                            match (row_below, left_index) {
+                                (Some(rb), Some(li)) => Some(&rb[li].kind),
+                                _ => None,
+                            }
+                        };
+                        let br = {
+                            match (row_below, right_index) {
+                                (Some(rb), Some(ri)) => Some(&rb[ri].kind),
+                                _ => None,
+                            }
+                        };
 
-                        let bottom_line_numbers =
-                            get_numbers_from_line(&bl.kind, &below.kind, &br.kind);
-
-                        let middle_line_numbers = get_numbers_from_middle(&left.kind, &right.kind);
+                        let top_line_numbers = get_numbers_from_line(tl, above, tr);
+                        let bottom_line_numbers = get_numbers_from_line(bl, below, br);
+                        let middle_line_numbers = get_numbers_from_middle(left, right);
 
                         let nums = top_line_numbers
                             .iter()
@@ -124,19 +153,16 @@ fn main() {
                             .chain(middle_line_numbers.iter())
                             .collect::<Vec<&i32>>();
 
-                        let len_nums = nums.len();
-                        let nums_clone = nums.clone();
-
-                        if len_nums == 2 as usize {
-                            let product = nums_clone.iter().fold(1, |acc, num| acc * num.clone());
+                        if nums.len() == 2 {
+                            let product = nums.iter().fold(1, |acc, num| acc * num.to_owned());
                             total.push(product.clone());
                         }
 
-                        println!(
-                            "{}{}{}\n{} {}\n{}{}{}",
-                            tl, above, tr, left, right, bl, below, br
-                        );
-                        dbg!(nums);
+                        // println!(
+                        //     "{}{}{}\n{} {}\n{}{}{}",
+                        //     tl, above, tr, left, right, bl, below, br
+                        // );
+                        println!("{:?}", nums);
                     }
                 }
                 _ => (),
@@ -148,40 +174,43 @@ fn main() {
     println!("{:?}", total.iter().sum::<i32>());
 }
 
-fn get_numbers_from_middle(left: &CellType, right: &CellType) -> Vec<i32> {
+fn get_numbers_from_middle(left: Option<&CellType>, right: Option<&CellType>) -> Vec<i32> {
     match (left, right) {
-        (CellType::Digit(d1), CellType::Digit(d2)) => {
+        (Some(CellType::Digit(d1)), Some(CellType::Digit(d2))) => {
             vec![d1.number.unwrap(), d2.number.unwrap()]
         }
-        (CellType::Digit(d), _) => {
+        (Some(CellType::Digit(d)), _) => {
             vec![d.number.unwrap()]
         }
-        (_, CellType::Digit(d)) => {
+        (_, Some(CellType::Digit(d))) => {
             vec![d.number.unwrap()]
         }
         _ => vec![],
     }
 }
 
-fn get_numbers_from_line(left: &CellType, middle: &CellType, right: &CellType) -> Vec<i32> {
+fn get_numbers_from_line(
+    left: Option<&CellType>,
+    middle: Option<&CellType>,
+    right: Option<&CellType>,
+) -> Vec<i32> {
     match (left, middle, right) {
-        (CellType::Digit(d1), CellType::Digit(_), CellType::Digit(_)) => {
+        (Some(CellType::Digit(d1)), Some(CellType::Digit(_)), Some(CellType::Digit(_))) => {
             vec![d1.number.unwrap()]
         }
-        (CellType::Digit(d1), CellType::Digit(_), _) => {
+        (Some(CellType::Digit(d1)), Some(CellType::Digit(_)), _) => {
             vec![d1.number.unwrap()]
         }
-        (_, CellType::Digit(d1), CellType::Digit(_)) => {
+        (_, Some(CellType::Digit(d1)), Some(CellType::Digit(_))) => {
             vec![d1.number.unwrap()]
         }
-        (CellType::Digit(d1), CellType::Blank, CellType::Digit(d2))
-        | (CellType::Digit(d1), CellType::Symbol(_), CellType::Digit(d2)) => {
+        (Some(CellType::Digit(d1)), _, Some(CellType::Digit(d2))) => {
             vec![d1.number.unwrap(), d2.number.unwrap()]
         }
-        (_, _, CellType::Digit(d)) => {
+        (_, _, Some(CellType::Digit(d))) => {
             vec![d.number.unwrap()]
         }
-        (CellType::Digit(d), _, _) => {
+        (Some(CellType::Digit(d)), _, _) => {
             vec![d.number.unwrap()]
         }
         _ => vec![],
@@ -200,7 +229,6 @@ type CellRow = Vec<Cell>;
 struct DigitCell {
     value: usize,
     number: Option<i32>,
-    id: usize,
 }
 
 #[derive(Debug)]
@@ -221,7 +249,6 @@ impl CellType {
             let d = DigitCell {
                 value: s.parse::<usize>().unwrap(),
                 number: None,
-                id: 0,
             };
             Ok(CellType::Digit(d))
         } else if blank_regex.is_match(&s) {
