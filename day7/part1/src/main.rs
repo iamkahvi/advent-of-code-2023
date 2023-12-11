@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum Card {
     A = 14,
     K = 13,
@@ -17,6 +17,10 @@ enum Card {
     Three = 3,
     Two = 2,
 }
+
+// impl Ord for Card {
+//     fn cmp(&self, other: &Self) -> Ordering {}
+// }
 
 impl Card {
     fn from_char(c: &char) -> Option<Card> {
@@ -45,7 +49,7 @@ enum HandType {
     Four(Card),
     FullHouse(Card, Card),
     Three(Card),
-    TwoPair(Card),
+    TwoPair(Card, Card),
     OnePair(Card),
     High(Card),
 }
@@ -91,14 +95,14 @@ fn parse_handtype(str: String) -> HandType {
 
     let counts = get_counts(&str);
 
-    println!("{:?}", counts);
+    // println!("{:?}", counts);
 
     let counts_vec = counts
         .iter()
         .sorted_by(|a, b| b.1.cmp(a.1))
         .collect::<Vec<_>>();
 
-    println!("{:?}", counts_vec);
+    // println!("{:?}", counts_vec);
 
     match counts_vec.len() {
         1 => {
@@ -109,12 +113,54 @@ fn parse_handtype(str: String) -> HandType {
             }
         }
         2 => {
-            let c1 = counts_vec[0].0;
-            let c2 = counts_vec[0].0;
-            match (Card::from_char(c1), Card::from_char(c2)) {
-                (Some(card1), Some(card2)) => HandType::Five(card1),
+            let c1 = Card::from_char(counts_vec[0].0);
+            let n1 = counts_vec[0].1;
+            let c2 = Card::from_char(counts_vec[1].0);
+            let n2 = counts_vec[1].1;
+
+            match ((c1, n1), (c2, n2)) {
+                ((Some(_), 1), (Some(card2), 4)) => HandType::Four(card2),
+                ((Some(card1), 2), (Some(card2), 3)) => HandType::FullHouse(card2, card1),
+                ((Some(card1), 3), (Some(card2), 2)) => HandType::FullHouse(card1, card2),
+                ((Some(card1), 4), (Some(_), 1)) => HandType::Four(card1),
                 _ => panic!("AAhh"),
             }
+        }
+        3 => {
+            let c1 = Card::from_char(counts_vec[0].0);
+            let n1 = counts_vec[0].1;
+            let c2 = Card::from_char(counts_vec[1].0);
+            let n2 = counts_vec[1].1;
+            let c3 = Card::from_char(counts_vec[2].0);
+            let n3 = counts_vec[2].1;
+
+            match ((c1, n1), (c2, n2), (c3, n3)) {
+                ((Some(_), 1), (Some(card2), 2), (Some(card3), 2)) => {
+                    HandType::TwoPair(card2, card3)
+                }
+                ((Some(_), 1), (Some(card2), 3), (Some(_), 1)) => HandType::Three(card2),
+                ((Some(_), 1), (Some(_), 1), (Some(card3), 3)) => HandType::Three(card3),
+                ((Some(card1), 2), (Some(card2), 2), (Some(_), 1)) => {
+                    HandType::TwoPair(card1, card2)
+                }
+                ((Some(card1), 2), (Some(_), 1), (Some(card3), 2)) => {
+                    HandType::TwoPair(card1, card3)
+                }
+                ((Some(card1), 3), (Some(_), 1), (Some(_), 1)) => HandType::Three(card1),
+                _ => panic!("ahhhhhh"),
+            }
+        }
+        4 => {
+            for (card, count) in counts_vec.iter() {
+                if let (Some(card), 2) = (Card::from_char(card), count) {
+                    return HandType::OnePair(card);
+                }
+            }
+            panic!("asdfadf")
+        }
+        5 => {
+            // counts_vec.sort_by(compare)
+            panic!("adfdf")
         }
         _ => HandType::Five(Card::A),
     }
