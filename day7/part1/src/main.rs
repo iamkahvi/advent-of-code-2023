@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use std::collections::HashMap;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 enum Card {
     A = 14,
     K = 13,
@@ -43,7 +43,7 @@ impl Card {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialOrd, Ord)]
 enum HandType {
     Five(Card),
     Four(Card),
@@ -54,40 +54,107 @@ enum HandType {
     High(Card),
 }
 
+impl PartialEq for HandType {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (HandType::High(_), HandType::High(_)) => true,
+            (HandType::OnePair(_), HandType::OnePair(_)) => true,
+            (HandType::TwoPair(_, _), HandType::TwoPair(_, _)) => true,
+            (HandType::Three(_), HandType::Three(_)) => true,
+            (HandType::FullHouse(_, _), HandType::FullHouse(_, _)) => true,
+            (HandType::Four(_), HandType::Four(_)) => true,
+            (HandType::Five(_), HandType::Five(_)) => true,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for HandType {}
+
 #[derive(Debug)]
 struct Hand {
-    cards: HandType,
+    ht: HandType,
     bid: i32,
 }
 
 fn main() {
     println!("Hello, world!");
 
-    let lines = include_str!("../../test2.txt")
+    let lines = include_str!("../../input1.txt")
         .lines()
         .collect::<Vec<&str>>();
 
     dbg!(&lines);
 
-    let hands: HashMap<String, Hand> = lines
+    let hands: Vec<(Vec<Card>, Hand)> = lines
         .iter()
         .map(|line| {
             // println!("{:?}", &line.split(" ").collect::<Vec<_>>());
             // dbg!(&line);
             if let [first, second, ..] = &*line.split_whitespace().collect::<Vec<_>>() {
-                let cards = parse_handtype(first.to_string());
+                let ht = parse_handtype(first.to_string());
                 let bid = second.to_string().parse::<i32>().unwrap();
 
-                dbg!(&cards);
+                let cards: Vec<Card> = first
+                    .chars()
+                    .into_iter()
+                    .map(|c| match Card::from_char(&c) {
+                        Some(card) => card,
+                        _ => panic!("asfadf"),
+                    })
+                    .collect();
 
-                return (first.to_string(), Hand { cards, bid });
+                return (cards, Hand { ht, bid });
             } else {
                 panic!("aahhhh");
             }
         })
         .collect();
 
-    println!("{:?}", hands);
+    // If two hands have the same type, a second ordering rule takes effect.
+    // Start by comparing the first card in each hand.
+    // If these cards are different, the hand with the stronger first card is
+    // considered stronger. If the first card in each hand have the same label,
+    // however, then move on to considering the second card in each hand.
+    // If they differ, the hand with the higher second card wins;
+    // otherwise, continue with the third card in each hand,
+    // then the fourth, then the fifth.
+
+    let sorted_hands: Vec<_> = hands
+        .into_iter()
+        .sorted_by(|a, b| match (&a.1.ht, &b.1.ht) {
+            (a_ht, b_ht) if a_ht == b_ht => {
+                for (ai, bi) in a.0.clone().into_iter().zip(b.0.clone().into_iter()) {
+                    if ai == bi {
+                        continue;
+                    } else {
+                        dbg!((&ai, &bi));
+                        dbg!(&ai.cmp(&bi));
+                        return ai.cmp(&bi);
+                    }
+                }
+                panic!("ahh")
+            }
+            (a, b) => {
+                dbg!((&a, &b));
+                dbg!(&(a.cmp(&b)));
+                b.cmp(&a)
+            }
+        })
+        .collect();
+
+    dbg!(&sorted_hands);
+
+    let res: i32 = sorted_hands
+        .into_iter()
+        .enumerate()
+        .map(|(i, el)| {
+            println!("hand: {:?}, bid: {}, rank: {}", el.0, el.1.bid, i + 1);
+            el.1.bid * (i + 1) as i32
+        })
+        .sum();
+
+    println!("res: {:?}", res);
 }
 
 fn parse_handtype(str: String) -> HandType {
@@ -159,10 +226,19 @@ fn parse_handtype(str: String) -> HandType {
             panic!("asdfadf")
         }
         5 => {
-            // counts_vec.sort_by(compare)
-            panic!("adfdf")
+            let ranked_cards: Vec<_> = counts_vec
+                .clone()
+                .iter()
+                .map(|(ch, _)| match Card::from_char(ch) {
+                    Some(card) => card,
+                    _ => panic!("Adfsf"),
+                })
+                .sorted_by(|a, b| b.cmp(a))
+                .collect();
+
+            return HandType::High(ranked_cards[0]);
         }
-        _ => HandType::Five(Card::A),
+        _ => panic!("more than 5 tokens"),
     }
 }
 
