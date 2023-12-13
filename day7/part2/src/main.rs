@@ -107,15 +107,6 @@ fn main() {
         })
         .collect();
 
-    // If two hands have the same type, a second ordering rule takes effect.
-    // Start by comparing the first card in each hand.
-    // If these cards are different, the hand with the stronger first card is
-    // considered stronger. If the first card in each hand have the same label,
-    // however, then move on to considering the second card in each hand.
-    // If they differ, the hand with the higher second card wins;
-    // otherwise, continue with the third card in each hand,
-    // then the fourth, then the fifth.
-
     let sorted_hands: Vec<_> = hands
         .into_iter()
         .sorted_by(|a, b| match (&a.1.ht, &b.1.ht) {
@@ -145,7 +136,13 @@ fn main() {
         .into_iter()
         .enumerate()
         .map(|(i, el)| {
-            println!("hand: {:?}, bid: {}, rank: {}", el.0, el.1.bid, i + 1);
+            println!(
+                "hand: {:?}, bid: {}, rank: {}, \nht: {:?}",
+                el.0,
+                el.1.bid,
+                i + 1,
+                el.1.ht
+            );
             el.1.bid * (i + 1) as i32
         })
         .sum();
@@ -159,6 +156,8 @@ fn parse_handtype(cards: &Vec<Card>) -> HandType {
     // println!("{:?}", counts);
     // println!("{:?}", counts_vec);
 
+    // replace Card::J with the best card in the hand
+
     match counts.len() {
         1 => {
             let c = counts[0].0;
@@ -169,10 +168,34 @@ fn parse_handtype(cards: &Vec<Card>) -> HandType {
             let (c2, n2) = counts[1];
 
             match ((c1, n1), (c2, n2)) {
-                ((_, 1), (card2, 4)) => HandType::Four(card2),
-                ((card1, 2), (card2, 3)) => HandType::FullHouse(card2, card1),
-                ((card1, 3), (card2, 2)) => HandType::FullHouse(card1, card2),
-                ((card1, 4), (_, 1)) => HandType::Four(card1),
+                ((card1, 1), (card2, 4)) => {
+                    if card2 == Card::J {
+                        HandType::Five(card1)
+                    } else if card1 == Card::J {
+                        HandType::Five(card2)
+                    } else {
+                        HandType::Four(card2)
+                    }
+                }
+                ((card1, 2), (card2, 3)) => match (card1 == Card::J, card2 == Card::J) {
+                    (true, false) => HandType::Five(card2),
+                    (false, true) => HandType::Five(card1),
+                    _ => HandType::FullHouse(card2, card1),
+                },
+                ((card1, 3), (card2, 2)) => match (card1 == Card::J, card2 == Card::J) {
+                    (true, false) => HandType::Five(card2),
+                    (false, true) => HandType::Five(card1),
+                    _ => HandType::FullHouse(card1, card2),
+                },
+                ((card1, 4), (card2, 1)) => {
+                    if card2 == Card::J {
+                        HandType::Five(card1)
+                    } else if card1 == Card::J {
+                        HandType::Five(card2)
+                    } else {
+                        HandType::Four(card1)
+                    }
+                }
                 _ => panic!("AAhh"),
             }
         }
@@ -180,6 +203,44 @@ fn parse_handtype(cards: &Vec<Card>) -> HandType {
             let (c1, n1) = counts[0];
             let (c2, n2) = counts[1];
             let (c3, n3) = counts[2];
+
+            // 2,2,1
+            // 3,1,1
+
+            if c1 == Card::J {
+                match n1 {
+                    2 => return HandType::Four(c2),
+                    3 => {
+                        if c2 > c3 {
+                            return HandType::Four(c2);
+                        } else {
+                            return HandType::Four(c3);
+                        }
+                    }
+                    _ => panic!("unknown count {}", n1),
+                }
+            }
+
+            if c2 == Card::J {
+                match n2 {
+                    1 | 2 => return HandType::Four(c1),
+                    _ => panic!("uh oh"),
+                }
+            }
+
+            if c3 == Card::J {
+                match n1 {
+                    2 => {
+                        if c1 > c2 {
+                            return HandType::Three(c1);
+                        } else {
+                            return HandType::Three(c2);
+                        }
+                    }
+                    3 => return HandType::Four(c1),
+                    _ => panic!("ADADDAA"),
+                }
+            }
 
             match ((c1, n1), (c2, n2), (c3, n3)) {
                 ((_, 1), (card2, 2), (card3, 2)) => HandType::TwoPair(card2, card3),
@@ -194,9 +255,17 @@ fn parse_handtype(cards: &Vec<Card>) -> HandType {
         4 => {
             for (card, count) in counts.iter() {
                 if *count == 2 {
+                    if card == &Card::J {
+                        let max = cards.iter().max().unwrap();
+                        return HandType::Three(*max);
+                    }
+                    if cards.contains(&Card::J) {
+                        return HandType::Three(*card);
+                    }
                     return HandType::OnePair(*card);
                 }
             }
+
             panic!("asdfadf")
         }
         5 => {
@@ -207,6 +276,10 @@ fn parse_handtype(cards: &Vec<Card>) -> HandType {
                 .sorted_by(|a, b| b.cmp(a))
                 .collect();
 
+            if cards.contains(&Card::J) {
+                return HandType::OnePair(*ranked_cards[0]);
+            }
+
             return HandType::High(*ranked_cards[0]);
         }
         _ => panic!("{:?} more than 5 tokens", &counts),
@@ -214,12 +287,16 @@ fn parse_handtype(cards: &Vec<Card>) -> HandType {
 }
 
 fn get_counts(cards: &Vec<Card>) -> Vec<(Card, i32)> {
+    let best = cards.iter().max().unwrap();
     let mut counts: HashMap<Card, i32> = HashMap::new();
 
     for c in cards {
         if counts.contains_key(c) {
             counts.entry(*c).and_modify(|e| *e += 1);
         } else {
+            if c == &Card::J {
+                counts.entry(*best).and_modify(|e| *e += 1);
+            }
             counts.insert(*c, 1);
         }
     }
