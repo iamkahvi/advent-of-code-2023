@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use std::collections::HashMap;
+use std::{cmp::Ordering, collections::HashMap};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
 enum Card {
@@ -76,7 +76,7 @@ struct Hand {
 fn main() {
     println!("Hello, world!");
 
-    let lines = include_str!("../../test1.txt")
+    let lines = include_str!("../../input1.txt")
         .lines()
         .collect::<Vec<&str>>();
 
@@ -115,22 +115,22 @@ fn main() {
                     if ai == bi {
                         continue;
                     } else {
-                        dbg!((&ai, &bi));
-                        dbg!(&ai.cmp(&bi));
+                        // dbg!((&ai, &bi));
+                        // dbg!(&ai.cmp(&bi));
                         return ai.cmp(&bi);
                     }
                 }
                 panic!("ahh")
             }
             (a, b) => {
-                dbg!((&a, &b));
-                dbg!(&(a.cmp(&b)));
+                // dbg!((&a, &b));
+                // dbg!(&(a.cmp(&b)));
                 b.cmp(&a)
             }
         })
         .collect();
 
-    dbg!(&sorted_hands);
+    // dbg!(&sorted_hands);
 
     let res: i32 = sorted_hands
         .into_iter()
@@ -151,12 +151,8 @@ fn main() {
 }
 
 fn parse_handtype(cards: &Vec<Card>) -> HandType {
+    // there should be no Js in this counts vec
     let counts = get_counts(&cards);
-
-    // println!("{:?}", counts);
-    // println!("{:?}", counts_vec);
-
-    // replace Card::J with the best card in the hand
 
     match counts.len() {
         1 => {
@@ -168,34 +164,10 @@ fn parse_handtype(cards: &Vec<Card>) -> HandType {
             let (c2, n2) = counts[1];
 
             match ((c1, n1), (c2, n2)) {
-                ((card1, 1), (card2, 4)) => {
-                    if card2 == Card::J {
-                        HandType::Five(card1)
-                    } else if card1 == Card::J {
-                        HandType::Five(card2)
-                    } else {
-                        HandType::Four(card2)
-                    }
-                }
-                ((card1, 2), (card2, 3)) => match (card1 == Card::J, card2 == Card::J) {
-                    (true, false) => HandType::Five(card2),
-                    (false, true) => HandType::Five(card1),
-                    _ => HandType::FullHouse(card2, card1),
-                },
-                ((card1, 3), (card2, 2)) => match (card1 == Card::J, card2 == Card::J) {
-                    (true, false) => HandType::Five(card2),
-                    (false, true) => HandType::Five(card1),
-                    _ => HandType::FullHouse(card1, card2),
-                },
-                ((card1, 4), (card2, 1)) => {
-                    if card2 == Card::J {
-                        HandType::Five(card1)
-                    } else if card1 == Card::J {
-                        HandType::Five(card2)
-                    } else {
-                        HandType::Four(card1)
-                    }
-                }
+                ((_, 1), (card2, 4)) => HandType::Four(card2),
+                ((card1, 2), (card2, 3)) => HandType::FullHouse(card2, card1),
+                ((card1, 3), (card2, 2)) => HandType::FullHouse(card1, card2),
+                ((card1, 4), (_, 1)) => HandType::Four(card1),
                 _ => panic!("AAhh"),
             }
         }
@@ -206,41 +178,6 @@ fn parse_handtype(cards: &Vec<Card>) -> HandType {
 
             // 2,2,1
             // 3,1,1
-
-            if c1 == Card::J {
-                match n1 {
-                    2 => return HandType::Four(c2),
-                    3 => {
-                        if c2 > c3 {
-                            return HandType::Four(c2);
-                        } else {
-                            return HandType::Four(c3);
-                        }
-                    }
-                    _ => panic!("unknown count {}", n1),
-                }
-            }
-
-            if c2 == Card::J {
-                match n2 {
-                    1 | 2 => return HandType::Four(c1),
-                    _ => panic!("uh oh"),
-                }
-            }
-
-            if c3 == Card::J {
-                match n1 {
-                    2 => {
-                        if c1 > c2 {
-                            return HandType::Three(c1);
-                        } else {
-                            return HandType::Three(c2);
-                        }
-                    }
-                    3 => return HandType::Four(c1),
-                    _ => panic!("ADADDAA"),
-                }
-            }
 
             match ((c1, n1), (c2, n2), (c3, n3)) {
                 ((_, 1), (card2, 2), (card3, 2)) => HandType::TwoPair(card2, card3),
@@ -255,13 +192,6 @@ fn parse_handtype(cards: &Vec<Card>) -> HandType {
         4 => {
             for (card, count) in counts.iter() {
                 if *count == 2 {
-                    if card == &Card::J {
-                        let max = cards.iter().max().unwrap();
-                        return HandType::Three(*max);
-                    }
-                    if cards.contains(&Card::J) {
-                        return HandType::Three(*card);
-                    }
                     return HandType::OnePair(*card);
                 }
             }
@@ -276,36 +206,53 @@ fn parse_handtype(cards: &Vec<Card>) -> HandType {
                 .sorted_by(|a, b| b.cmp(a))
                 .collect();
 
-            if cards.contains(&Card::J) {
-                return HandType::OnePair(*ranked_cards[0]);
-            }
-
             return HandType::High(*ranked_cards[0]);
         }
-        _ => panic!("{:?} more than 5 tokens", &counts),
+        _ => panic!("{:?} more than 5 or 0 tokens", &counts),
     }
 }
 
 fn get_counts(cards: &Vec<Card>) -> Vec<(Card, i32)> {
-    let best = cards.iter().max().unwrap();
     let mut counts: HashMap<Card, i32> = HashMap::new();
 
     for c in cards {
         if counts.contains_key(c) {
             counts.entry(*c).and_modify(|e| *e += 1);
         } else {
-            if c == &Card::J {
-                counts.entry(*best).and_modify(|e| *e += 1);
-            }
             counts.insert(*c, 1);
         }
     }
 
-    let result: Vec<_> = counts
+    let num_js = if let Some(c) = counts.get(&Card::J) {
+        c.clone()
+    } else {
+        0
+    };
+
+    let result: Vec<(Card, i32)> = counts
         .clone()
         .iter()
         .map(|(card, num)| (card.clone(), num.clone()))
+        .filter(|(card, _)| num_js == cards.len() as i32 || card != &Card::J)
         .sorted_by(|a, b| b.1.cmp(&a.1))
+        .collect_vec()
+        .chunks(2)
+        .flat_map(|counts| match counts {
+            [(c1, n1), (c2, n2)] => {
+                if n1 > n2 {
+                    return vec![(*c1, n1 + num_js), (*c2, *n2)];
+                } else if n2 > n1 {
+                    return vec![(*c1, *n1), (*c2, n2 + num_js)];
+                } else {
+                    if c1.cmp(c2) == Ordering::Greater {
+                        return vec![(*c1, n1 + num_js), (*c2, *n2)];
+                    } else {
+                        return vec![(*c1, *n1), (*c2, n2 + num_js)];
+                    }
+                }
+            }
+            _ => counts.to_vec(),
+        })
         .collect();
 
     dbg!(&result);
