@@ -84,10 +84,10 @@ fn main() {
         .iter()
         .map(|line| {
             let mut words = line.split_whitespace();
-            let first = words.next().unwrap();
-            let second = words.next().unwrap();
+            let card_str = words.next().unwrap();
+            let bid_str = words.next().unwrap();
 
-            let cards: Vec<Card> = first
+            let cards: Vec<Card> = card_str
                 .chars()
                 .into_iter()
                 .map(|c| match Card::from_char(&c) {
@@ -99,7 +99,7 @@ fn main() {
             dbg!(&cards);
 
             let ht = parse_handtype(&cards);
-            let bid = second.to_string().parse::<i32>().unwrap();
+            let bid = bid_str.to_string().parse::<i32>().unwrap();
 
             (cards, Hand { ht, bid })
         })
@@ -146,6 +146,7 @@ fn parse_handtype(cards: &Vec<Card>) -> HandType {
     // there should be no Js in this counts vec
     let counts = get_counts(&cards);
 
+    // match on number of unique numbers in the hand
     match counts.len() {
         1 => {
             let c = counts[0].0;
