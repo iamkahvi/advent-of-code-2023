@@ -80,30 +80,28 @@ fn main() {
         .lines()
         .collect::<Vec<&str>>();
 
-    dbg!(&lines);
-
     let hands: Vec<(Vec<Card>, Hand)> = lines
         .iter()
         .map(|line| {
-            if let [first, second, ..] = &line.split_whitespace().collect::<Vec<_>>()[0..2] {
-                let cards: Vec<Card> = first
-                    .chars()
-                    .into_iter()
-                    .map(|c| match Card::from_char(&c) {
-                        Some(card) => card,
-                        _ => panic!("asfadf"),
-                    })
-                    .collect();
+            let mut words = line.split_whitespace();
+            let first = words.next().unwrap();
+            let second = words.next().unwrap();
 
-                dbg!(&cards);
+            let cards: Vec<Card> = first
+                .chars()
+                .into_iter()
+                .map(|c| match Card::from_char(&c) {
+                    Some(card) => card,
+                    _ => panic!("asfadf"),
+                })
+                .collect();
 
-                let ht = parse_handtype(&cards);
-                let bid = second.to_string().parse::<i32>().unwrap();
+            dbg!(&cards);
 
-                return (cards, Hand { ht, bid });
-            } else {
-                panic!("aahhhh");
-            }
+            let ht = parse_handtype(&cards);
+            let bid = second.to_string().parse::<i32>().unwrap();
+
+            (cards, Hand { ht, bid })
         })
         .collect();
 
@@ -111,22 +109,16 @@ fn main() {
         .into_iter()
         .sorted_by(|a, b| match (&a.1.ht, &b.1.ht) {
             (a_ht, b_ht) if a_ht == b_ht => {
-                for (ai, bi) in a.0.clone().into_iter().zip(b.0.clone().into_iter()) {
+                for (ai, bi) in a.0.iter().zip(&b.0) {
                     if ai == bi {
                         continue;
                     } else {
-                        // dbg!((&ai, &bi));
-                        // dbg!(&ai.cmp(&bi));
                         return ai.cmp(&bi);
                     }
                 }
                 panic!("ahh")
             }
-            (a, b) => {
-                // dbg!((&a, &b));
-                // dbg!(&(a.cmp(&b)));
-                b.cmp(&a)
-            }
+            (a, b) => b.cmp(&a),
         })
         .collect();
 
@@ -230,28 +222,28 @@ fn get_counts(cards: &Vec<Card>) -> Vec<(Card, i32)> {
     };
 
     let result: Vec<(Card, i32)> = counts
-        .clone()
         .iter()
+        .filter(|(card, _)| num_js == cards.len() as i32 || card != &&Card::J)
         .map(|(card, num)| (card.clone(), num.clone()))
-        .filter(|(card, _)| num_js == cards.len() as i32 || card != &Card::J)
         .sorted_by(|a, b| b.1.cmp(&a.1))
         .collect_vec()
         .chunks(2)
-        .flat_map(|counts| match counts {
-            [(c1, n1), (c2, n2)] => {
-                if n1 > n2 {
-                    return vec![(*c1, n1 + num_js), (*c2, *n2)];
+        .flat_map(|chunk| match chunk {
+            [a, b] => {
+                let (c1, n1) = a;
+                let (c2, n2) = b;
+                let (e1, e2) = if n1 > n2 {
+                    ((*c1, n1 + num_js), (*c2, *n2))
                 } else if n2 > n1 {
-                    return vec![(*c1, *n1), (*c2, n2 + num_js)];
+                    ((*c1, *n1), (*c2, n2 + num_js))
+                } else if c1.cmp(c2) == Ordering::Greater {
+                    ((*c1, n1 + num_js), (*c2, *n2))
                 } else {
-                    if c1.cmp(c2) == Ordering::Greater {
-                        return vec![(*c1, n1 + num_js), (*c2, *n2)];
-                    } else {
-                        return vec![(*c1, *n1), (*c2, n2 + num_js)];
-                    }
-                }
+                    ((*c1, *n1), (*c2, n2 + num_js))
+                };
+                vec![e1, e2]
             }
-            _ => counts.to_vec(),
+            _ => chunk.to_vec(),
         })
         .collect();
 
