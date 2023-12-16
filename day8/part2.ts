@@ -18,26 +18,21 @@ const stepsArr = [];
 lines.forEach((line, i) => {
   if (i < 1) return;
 
-  // Splitting the input string into two parts at '='
   const parts = line.split("=");
 
   if (parts.length !== 2) {
     throw new Error("Invalid string format");
   }
 
-  // Extracting the key and trimming any whitespace
   const key = parts[0].trim();
   if (key[2] === "A") startKeys.push(key);
 
-  // Removing parentheses and splitting the inside part by ','
   const values = parts[1].trim().replace("(", "").replace(")", "").split(",");
 
   if (values.length !== 2) {
     throw new Error("Invalid string format");
   }
 
-  // Trimming any whitespace around left and right values
-  const left = values[0].trim();
   const right = values[1].trim();
 
   network.set(key, { left, right });
