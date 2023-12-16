@@ -12,6 +12,8 @@ type NetworkNode = {
 };
 
 const network = new Map<string, NetworkNode>();
+const startKeys = [];
+const stepsArr = [];
 
 lines.forEach((line, i) => {
   if (i < 1) return;
@@ -25,6 +27,7 @@ lines.forEach((line, i) => {
 
   // Extracting the key and trimming any whitespace
   const key = parts[0].trim();
+  if (key[2] === "A") startKeys.push(key);
 
   // Removing parentheses and splitting the inside part by ','
   const values = parts[1].trim().replace("(", "").replace(")", "").split(",");
@@ -41,33 +44,41 @@ lines.forEach((line, i) => {
 });
 
 console.log(network);
+console.log(`startKeys: ${startKeys}`);
 
-let currentNode = network.get("AAA");
-let steps = 0;
+for (const startKey of startKeys) {
+  let steps = 0;
+  let currentKey = startKey;
 
-while (true) {
-  if (!currentNode) {
-    throw new Error("Invalid node");
+  while (true) {
+    const c = instructions[steps % instructions.length];
+    console.log(c);
+
+    const currentNode = network.get(currentKey);
+
+    steps++;
+    if (c === "L") {
+      if (currentNode.left[2] === "Z") {
+        break;
+      }
+
+      currentKey = currentNode.left;
+    } else if (c === "R") {
+      if (currentNode.right[2] === "Z") {
+        break;
+      }
+      currentKey = currentNode.right;
+    }
   }
 
-  const c = instructions[steps % instructions.length];
-  console.log(c);
-  console.log(currentNode);
+  stepsArr.push(steps);
 
-  steps++;
-  if (c === "L") {
-    if (currentNode.left === "ZZZ") {
-      break;
-    }
-
-    currentNode = network.get(currentNode.left);
-  } else if (c === "R") {
-    if (currentNode.right === "ZZZ") {
-      break;
-    }
-
-    currentNode = network.get(currentNode.right);
-  }
+  console.log(`startNode: ${startKey}, steps: ${steps}`);
 }
 
-console.log(steps);
+const gcd = (a, b) => a ? gcd(b % a, a) : b;
+
+const lcm = (a, b) => a * b / gcd(a, b);
+
+console.log(stepsArr);
+console.log(stepsArr.reduce(lcm));
