@@ -1,6 +1,6 @@
 export {};
 
-const text = await Deno.readTextFile("./test1.txt");
+const text = await Deno.readTextFile("./input.txt");
 
 const lines = text.split("\n").filter((line) => Boolean(line)).map((line) => {
   return line.split(" ").map((x) => parseInt(x));
@@ -36,9 +36,12 @@ for (const history of lines) {
     const j = diffs.length - i - 1;
     const diff = diffs[j];
 
-    const lastEl = diff[diff.length - 1];
+    const firstEl = diff[0];
 
-    tally.push(lastEl === 0 ? 0 : lastEl + tally[i - 1]);
+    // console.log(`firstEl: ${firstEl}`);
+    // console.log(`tally: ${i === 0 ? 0 : firstEl - tally[i - 1]}`);
+
+    tally.push(i === 0 ? 0 : firstEl - tally[i - 1]);
   }
   console.log(tally);
   res.push(tally[tally.length - 1]);
